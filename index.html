@@ -342,7 +342,7 @@
 
     function openEmail(person) {
       const subject = `Regarding ${person.role || 'an open'} role`;
-      const body = `Hi ${person.name || ''},\n\nWe would like to connect with you regarding the ${person.role || 'open'} role.\n\nThanks.`;
+      const body = `Hello ${person.name || 'there'},\n\nWe would like to connect with you regarding the ${person.role || 'open'} role.\n\nThanks.`;
       const url = `mailto:${encodeURIComponent(person.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     }
