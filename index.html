@@ -329,7 +329,11 @@
 
     function openWhatsApp(person) {
       const cleanPhone = person.phone.replace(/\D/g, '');
-      if (!cleanPhone) return;
+      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        statusEl.textContent = `Invalid phone for ${person.name || 'selected row'}: enter 10-15 digits.`;
+        statusEl.style.color = '#a33';
+        return;
+      }
 
       const message = `Hi ${person.name || 'there'}, we reviewed your profile for the ${person.role || 'open'} role.`;
       const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -340,7 +344,7 @@
       const subject = `Regarding ${person.role || 'an open'} role`;
       const body = `Hi ${person.name || ''},\n\nWe would like to connect with you regarding the ${person.role || 'open'} role.\n\nThanks.`;
       const url = `mailto:${encodeURIComponent(person.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = url;
+      window.open(url, '_blank', 'noopener');
     }
 
     function renderEmpty(message) {

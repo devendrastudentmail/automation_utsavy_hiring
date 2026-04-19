@@ -9,8 +9,7 @@ Simple plain HTML/JavaScript web app to upload a CSV and trigger outreach action
 - Per-row **Email** button (opens `mailto:` with subject + body)
 
 ## Run
-Open this file directly in your browser:
-- `/home/runner/work/automation_utsavy_hiring/automation_utsavy_hiring/index.html`
+Open `index.html` directly in your browser.
 
 ## CSV format
 Example:
