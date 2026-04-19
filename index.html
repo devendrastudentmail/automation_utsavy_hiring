@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hiring Outreach CSV Tool</title>
+  <style>
+    :root {
+      --bg: #f6f8fc;
+      --card: #ffffff;
+      --text: #1a1f36;
+      --muted: #5a6473;
+      --border: #dbe1ea;
+      --primary: #3164ff;
+      --primary-hover: #254fe0;
+      --success: #1f9d55;
+      --success-hover: #188347;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(24, 39, 75, 0.05);
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 26px;
+    }
+
+    .subtitle {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .upload-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    input[type="file"] {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fff;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .message {
+      margin: 0 0 12px;
+      color: #a33;
+      font-size: 14px;
+      min-height: 18px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+      background: #fff;
+    }
+
+    thead {
+      background: #eef2ff;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .btn-wa {
+      background: var(--success);
+    }
+
+    .btn-wa:hover { background: var(--success-hover); }
+
+    .btn-mail {
+      background: var(--primary);
+    }
+
+    .btn-mail:hover { background: var(--primary-hover); }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Hiring Outreach CSV Tool</h1>
+      <p class="subtitle">Upload a CSV with columns: Name, Phone, Email, Role</p>
+
+      <div class="upload-row">
+        <input id="csvFile" type="file" accept=".csv,text/csv" />
+        <p class="hint">First row should be headers.</p>
+      </div>
+
+      <p id="status" class="message"></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td colspan="5" style="color:#5a6473;">No data loaded yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('csvFile');
+    const tableBody = document.getElementById('tableBody');
+    const statusEl = document.getElementById('status');
+
+    fileInput.addEventListener('change', handleFileUpload);
+
+    function handleFileUpload(event) {
+      clearStatus();
+
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const csvText = String(e.target.result || '');
+        const rows = parseCSV(csvText);
+        if (rows.length < 2) {
+          renderEmpty('CSV is empty or missing data rows.');
+          return;
+        }
+
+        const headers = rows[0].map(h => h.trim().toLowerCase());
+        const required = ['name', 'phone', 'email', 'role'];
+        const missing = required.filter(key => !headers.includes(key));
+
+        if (missing.length > 0) {
+          renderEmpty('Missing required columns: ' + missing.join(', '));
+          return;
+        }
+
+        const idx = {
+          name: headers.indexOf('name'),
+          phone: headers.indexOf('phone'),
+          email: headers.indexOf('email'),
+          role: headers.indexOf('role')
+        };
+
+        const people = rows
+          .slice(1)
+          .map(cols => ({
+            name: (cols[idx.name] || '').trim(),
+            phone: (cols[idx.phone] || '').trim(),
+            email: (cols[idx.email] || '').trim(),
+            role: (cols[idx.role] || '').trim()
+          }))
+          .filter(p => p.name || p.phone || p.email || p.role);
+
+        if (people.length === 0) {
+          renderEmpty('No valid rows found in the CSV file.');
+          return;
+        }
+
+        renderTable(people);
+        statusEl.textContent = `Loaded ${people.length} row(s).`;
+        statusEl.style.color = '#1f9d55';
+      };
+
+      reader.onerror = () => {
+        renderEmpty('Could not read the file. Please try again.');
+      };
+
+      reader.readAsText(file);
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i + 1];
+
+        if (ch === '"') {
+          if (inQuotes && next === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          row.push(current);
+          current = '';
+        } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+          if (ch === '\r' && next === '\n') i++;
+          row.push(current);
+          if (row.some(cell => cell.trim() !== '')) {
+            rows.push(row);
+          }
+          row = [];
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+
+      if (current.length > 0 || row.length > 0) {
+        row.push(current);
+        if (row.some(cell => cell.trim() !== '')) {
+          rows.push(row);
+        }
+      }
+
+      return rows;
+    }
+
+    function renderTable(people) {
+      tableBody.innerHTML = '';
+
+      people.forEach(person => {
+        const tr = document.createElement('tr');
+
+        tr.appendChild(td(person.name));
+        tr.appendChild(td(person.phone));
+        tr.appendChild(td(person.email));
+        tr.appendChild(td(person.role));
+
+        const actionsTd = document.createElement('td');
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const waBtn = document.createElement('button');
+        waBtn.textContent = 'WhatsApp';
+        waBtn.className = 'btn-wa';
+        waBtn.disabled = !person.phone;
+        waBtn.addEventListener('click', () => openWhatsApp(person));
+
+        const mailBtn = document.createElement('button');
+        mailBtn.textContent = 'Email';
+        mailBtn.className = 'btn-mail';
+        mailBtn.disabled = !person.email;
+        mailBtn.addEventListener('click', () => openEmail(person));
+
+        actions.appendChild(waBtn);
+        actions.appendChild(mailBtn);
+        actionsTd.appendChild(actions);
+        tr.appendChild(actionsTd);
+
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function td(text) {
+      const cell = document.createElement('td');
+      cell.textContent = text;
+      return cell;
+    }
+
+    function openWhatsApp(person) {
+      const cleanPhone = person.phone.replace(/\D/g, '');
+      if (!cleanPhone) return;
+
+      const message = `Hi ${person.name || 'there'}, we reviewed your profile for the ${person.role || 'open'} role.`;
+      const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank', 'noopener');
+    }
+
+    function openEmail(person) {
+      const subject = `Regarding ${person.role || 'an open'} role`;
+      const body = `Hi ${person.name || ''},\n\nWe would like to connect with you regarding the ${person.role || 'open'} role.\n\nThanks.`;
+      const url = `mailto:${encodeURIComponent(person.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = url;
+    }
+
+    function renderEmpty(message) {
+      tableBody.innerHTML = `<tr><td colspan="5" style="color:#5a6473;">${escapeHTML(message)}</td></tr>`;
+      statusEl.textContent = message;
+      statusEl.style.color = '#a33';
+    }
+
+    function clearStatus() {
+      statusEl.textContent = '';
+    }
+
+    function escapeHTML(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>
